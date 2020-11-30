@@ -34,7 +34,14 @@ float RoutePlanner::CalculateHValue(RouteModel::Node const *node) {
 // - For each node in current_node.neighbors, add the neighbor to open_list and set the node's visited attribute to true.
 
 void RoutePlanner::AddNeighbors(RouteModel::Node *current_node) {
-
+  current_node->FindNeighbors();
+  for (auto node: current_node->neighbors) {
+    node->parent = current_node;
+    node->h_value = CalculateHValue(node);
+    node->g_value = current_node->g_value + node->distance(*current_node);
+    node->visited = true;
+    this->open_list.push_back(node);
+  }
 }
 
 
@@ -46,7 +53,14 @@ void RoutePlanner::AddNeighbors(RouteModel::Node *current_node) {
 // - Return the pointer.
 
 RouteModel::Node *RoutePlanner::NextNode() {
-
+  sort(open_list.begin(), open_list.end(), [](const auto node1, const auto node2)
+       {
+         return (node1->g_value+node1->h_value)<(node2->g_value+node2->h_value);
+       }
+  );
+  auto first_node = open_list[0];
+  open_list.erase(open_list.begin());
+  return first_node;
 }
 
 
@@ -64,6 +78,16 @@ std::vector<RouteModel::Node> RoutePlanner::ConstructFinalPath(RouteModel::Node 
     std::vector<RouteModel::Node> path_found;
 
     // TODO: Implement your solution here.
+    // - add node to path_found, at the beginning
+    // - if no parent node: finished
+    // - else get distance to parent node, set node to parent node, and repeat
+    path_found.insert(path_found.begin(), *current_node); 
+    while (current_node->parent) {
+        distance += current_node->distance(*(current_node->parent));
+        current_node = current_node->parent;
+        path_found.insert(path_found.begin(), *current_node); 
+    }
+  
 
     distance *= m_Model.MetricScale(); // Multiply the distance by the scale of the map to get meters.
     return path_found;
